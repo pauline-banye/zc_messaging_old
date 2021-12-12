@@ -25,15 +25,12 @@ router = APIRouter()
 async def dm_install(organisation_id: str = Body(...), user_id: str = Body(...)):
     """This endpoint is called when an organisation wants to install the
     DM plugin for their workspace.
-
     Args: [dict]: key value pairs of organisation_id and user_id
           sample_payload = {
                 "organisation_id": "5e8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f",
                 "user_id": "5e8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f"
                 }
-
     Returns: [str]: string response of "installation successful"
-
     Raises: [HTTPException]: raises an HTTPException if the installation fails
             400: [dict]: if organisation_id or user_id is an invalid object id
             422: [dict]: if the organisation_id or user_id is not found in request body
@@ -112,14 +109,11 @@ async def dm_install(organisation_id: str = Body(...), user_id: str = Body(...))
 )
 async def get_sidebar(org: str, user: str):
     """Provides a response of side bar data for the given room type
-
     Args:
         org (str): The organization id
         user (str): The member id of user logged in
-
     Returns:
         [dict]: dict containing sidebar data with status code 200
-
     Raises:
         HTTPException [dict]: dict containing error message and 400 status code
     """

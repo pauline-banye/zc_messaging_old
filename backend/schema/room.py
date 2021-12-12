@@ -13,7 +13,6 @@ from utils.room_utils import get_org_rooms
 
 class Role(str, Enum):
     """Provides choices for the roles of a user in a room.
-
     ADMIN ['admin'] -> The admin role is the only one that can add or remove users from a room.
     MEMBER ['member'] -> The member role cannot add or remove users from a room
     """
@@ -28,7 +27,6 @@ class Role(str, Enum):
 
 class RoomType(str, Enum):
     """Provides choices of plugins.
-
     Provides class level constants for the plugins.
     DM ['DM'] -> direct message plugin
     CHANNEL ['Channel'] -> channel plugin
@@ -71,10 +69,8 @@ class RoomRequest(BaseModel):
         """validates data required for a DM room
         Args:
             values [dict]: key value pair of all object data
-
         Returns:
             [dict]: key value pair of all object data
-
         Raises:
             HTTPException [400]: if group dm exceeds 9 members
             HTTPException [400]: if DM has topic
@@ -145,13 +141,10 @@ class RoomRequest(BaseModel):
     @classmethod
     def validates_channels(cls, values):
         """Checks if the room_members has at least two unique members
-
         Args:
             values [dict]: key value pair of all room members
-
         Returns:
             [dict]: key value pair of all object
-
         Raises:
             HTTPException [400]: if room_members has less than two unique members
         """
@@ -190,7 +183,6 @@ class RoomRequest(BaseModel):
 
 class Room(RoomRequest):
     """Provide structure for the room schema
-
     Class inherits from RooomRequest to hold data for the room schema
     """
 
@@ -202,23 +194,19 @@ class Room(RoomRequest):
     @classmethod
     def is_object_id(cls, values):
         """validates if the id is a valid object id
-
         Args:
             values [dict]: key value pair of all object data
-
         Returns:
             [dict]: key value pair of all object data
-
         Raises:
             HTTPException [400]: if id is not a valid object id
         """
-        if values.get("id") is not None and not ObjectId.is_valid(
-            values.get("id")
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="id is not a valid object id",
-            )
+        if values.get("id") is not None:
+            if not ObjectId.is_valid(values.get("id")):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="id is not a valid object id",
+                )
 
         if not ObjectId.is_valid(values.get("org_id")):
             raise HTTPException(
@@ -233,4 +221,3 @@ class Room(RoomRequest):
             )
 
         return values
-

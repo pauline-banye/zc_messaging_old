@@ -15,11 +15,9 @@ async def get_org_rooms(
     is_default: bool = None,
 ) -> list:
     """Get all rooms in an organization
-
     Args:
         org_id (str): The organization id
         category (Optional(str): The category of the room (channel, dm)
-
     Returns:
         [List]: returns a list of all rooms within that organisation
     """
@@ -58,16 +56,14 @@ async def get_room(org_id: str, room_id: str) -> dict:
 
     if response and "status_code" not in response:
         return response
-    return None
+    return {}
 
 
 async def get_room_members(org_id: str, room_id: str) -> dict:
     """Get the members of a room
-
     Args:
         org_id (str): The organization's id
         room_id (str): The room id
-
     Returns:
         [Dict]: key value
     """
@@ -82,11 +78,9 @@ async def get_room_members(org_id: str, room_id: str) -> dict:
 
 async def get_member_starred_rooms(org_id: str, member_id: str) -> list:
     """Get all starred rooms of a user
-
     Args:
         org_id (str): The organization id
         member_id (str): The user id
-
     Returns:
         [List]: list of rooms that are starred by the user
     """
@@ -101,14 +95,11 @@ async def get_member_starred_rooms(org_id: str, member_id: str) -> list:
 
 async def is_user_starred_room(org_id: str, room_id: str, member_id: str) -> bool:
     """Checks if room is starred by user
-
     Args:
         org_id (str): The organization id
         member_id (str): The user id
-
     Returns:
         bool: returns True if room is starred by user else returns False
-
     Raise:
         ValueError: Room not found
     """

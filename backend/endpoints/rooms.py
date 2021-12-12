@@ -25,16 +25,13 @@ async def create_room(
     org_id: str, member_id: str, request: RoomRequest, background_tasks: BackgroundTasks
 ):
     """Creates a room between users.
-
     Registers a new document to the database collection.
     Returns the document id if the room is successfully created or already exist
     while publishing to the user sidebar in the background
-
     Args:
         org_id (str): A unique identifier of an organisation
         request: A pydantic schema that defines the room request parameters
         member_id: A unique identifier of the member creating the room
-
     Returns:
         HTTP_200_OK (room already exist): {room_id}
         HTTP_201_CREATED (new room created): {room_id}
@@ -83,8 +80,15 @@ async def create_room(
         400: {"detail": "the max number for a Group_DM is 9"},
         401: {"detail": "member not an admin"},
         403: {"detail": "DM room or not found"},
+        424: {"detail": "failed to add new members to room"},
+    },
+)
+async def join_room(
+    org_id: str,
+    room_id: str,
     member_id: str,
     background_tasks: BackgroundTasks,
+    new_members: Dict[str, RoomMember] = Body(...),
 ):
     """Adds a new member(s) to a room
     Args:
@@ -94,7 +98,6 @@ async def create_room(
         member_id: A unique identifier of the member initiating the request
         background_tasks: A parameter that allows tasks to be performed outside of the main function
         new_members: A dictionary of new members to be added to the room
-
     Returns:
         HTTP_200_OK: {
                         "status": 200,
