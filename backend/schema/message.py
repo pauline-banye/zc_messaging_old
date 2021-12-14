@@ -5,6 +5,8 @@ from typing import List
 from fastapi import HTTPException, status
 from pydantic import AnyHttpUrl, BaseModel, Field, root_validator
 from utils.room_utils import get_room
+from bson.objectid import ObjectId
+
 
 class Reaction(BaseModel):
     """Provides the nested object for reactions to message"""
@@ -32,8 +34,8 @@ class Thread(MessageRequest):
     """
     sender_id: str
     room_id: str
-    org_id:str
-    message_id:str = Field(None, alias="_id")
+    org_id: str
+    message_id: str = Field(None, alias="_id")
 
     @root_validator(pre=True)
     @classmethod
@@ -69,6 +71,7 @@ class Thread(MessageRequest):
                 detail="sender not a member of this room",
             )
         return values
+
 
 class Message(Thread):
     """Provides a base model for messages

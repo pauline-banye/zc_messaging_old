@@ -7,7 +7,6 @@ from utils.centrifugo import Events, centrifugo_client
 from utils.db import DataStorage
 from utils.room_utils import ROOM_COLLECTION, get_room
 from utils.sidebar import sidebar
-from utils.room_utils import get_room
 from typing import Dict
 
 router = APIRouter()
@@ -99,6 +98,14 @@ async def join_room(
         member_id: A unique identifier of the member initiating the request
         background_tasks: A parameter that allows tasks to be performed outside of the main function
         new_members: A dictionary of new members to be added to the room
+    Sample request:
+        {
+            "619ba4671a5f54782939d385": {
+            "closed": false, 
+            "role": "admin", 
+            "starred": false
+            }
+        }
     Returns:
         HTTP_200_OK: {
                         "status": 200,
@@ -122,23 +129,23 @@ async def join_room(
 
     room = await get_room(org_id=org_id, room_id=room_id)
 
-    if not room or room["room_type"] == RoomType.DM:
+    if not room or room["room_type"].upper() == RoomType.DM:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="DM room cannot be joined or not found",
         )
 
     member = room.get("room_members").get(str(member_id))
-    if member is None or member["role"] != Role.ADMIN:
+    if member is None or member["role"].upper() != Role.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="member not in room or not an admin",
         )
 
-    if room["room_type"] == RoomType.CHANNEL:
+    if room["room_type"].upper() == RoomType.CHANNEL:
         room["room_members"].update(members)
 
-    if room["room_type"] == RoomType.GROUP_DM:
+    if room["room_type"].upper() == RoomType.GROUP_DM:
         room["room_members"].update(members)
         if len(room["room_members"].keys()) > 9:
             raise HTTPException(
@@ -167,3 +174,109 @@ async def join_room(
         status_code=status.HTTP_424_FAILED_DEPENDENCY,
         detail="failed to add new members to room",
     )
+
+
+@router.get(
+    "/org/{org_id}/rooms/{room_id}",
+    response_model=ResponseModel,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"detail": {"room_id": "room_id"}},
+        404: {"detail": "room not found"},
+    },
+)
+async def get_room_by_id(
+    org_id: str, room_id: str
+):
+    """Get room by id.
+
+    Returns the room object if the room is found in the database
+    Raises HTTP_404_NOT_FOUND if the room is not found
+
+    Args:
+        org_id (str): A unique identifier of an organisation
+        room_id (str): A unique identifier of the room
+
+    Returns:
+        HTTP_200_OK (room found): {room}
+        HTTP_404_NOT_FOUND (room not found): {room}
+    """
+    if org_id and room_id:
+        room = await get_room(org_id=org_id, room_id=room_id)
+        try:
+            if room:
+                return JSONResponse(
+                    content=ResponseModel.success(data=room, message="room found"),
+                    status_code=status.HTTP_200_OK,
+                )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="room not found"
+            )
+        except HTTPException as e:
+            raise e
+    raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid org_id",
+        )
+
+
+@router.get(
+    "/org/{org_id}/rooms",
+    response_model=ResponseModel,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"detail": {"rooms": "list of rooms"}},
+        404: {"detail": "rooms not found"},
+    },
+)
+async def get_all_rooms(org_id: str):
+    """Get all rooms.
+
+    Returns the list of rooms if the rooms are found in the database
+    Raises HTTP_404_NOT_FOUND if the rooms are not found
+
+    Args:
+        org_id (str): A unique identifier of an organisation
+
+    Returns:
+        HTTP_200_OK (rooms found): {rooms}
+        HTTP_404_NOT_FOUND (rooms not found): {rooms}
+    """
+
+    DB = DataStorage(org_id)
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid Organization id",
+        )
+    
+    try:
+        rooms = await DB.read(ROOM_COLLECTION, query={"org_id": org_id})
+        if rooms:
+            return JSONResponse(
+                content=ResponseModel.success(data=rooms, message="rooms found"),
+                status_code=status.HTTP_200_OK,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="rooms not found"
+        )
+    except HTTPException as e:
+        raise e
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
