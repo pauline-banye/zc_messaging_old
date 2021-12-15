@@ -136,7 +136,8 @@ async def join_room(
         )
 
     member = room.get("room_members").get(str(member_id))
-    if member is None or member["role"].upper() != Role.ADMIN:
+    # if member is None or member["role"].upper() != Role.ADMIN:
+    if member is None or member["role"] != "admin":# or "member":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="member not in room or not an admin",

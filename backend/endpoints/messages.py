@@ -1,4 +1,4 @@
-from utils.room_utils import get_room
+from utils.mssg_utils import get_mssg
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from schema.message import Message, MessageRequest
 from schema.response import ResponseModel
@@ -89,7 +89,7 @@ async def send_message(
         424: {"detail": "ZC Core Failed"},
     },
 )
-async def read_message(org_id: str, room_id: str):
+async def read_message(org_id: str, room_id: str): 
     """Reads messages in the collection.
 
     Args:
@@ -126,14 +126,14 @@ async def read_message(org_id: str, room_id: str):
             detail="Invalid Organization id",
         )
 
-    room = await get_room(org_id=org_id, room_id=room_id)
-    if not room:
+    if room_id is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Room does not exist"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid Room id",
         )
 
     try:
-        messages = await DB.read(MESSAGE_COLLECTION, query={"org_id": org_id, "room_id": room_id})
+        messages = await DB.read(MESSAGE_COLLECTION, {"org_id": org_id, "room_id": room_id})
         if messages:
             return JSONResponse(
                 content=ResponseModel.success(
@@ -142,11 +142,80 @@ async def read_message(org_id: str, room_id: str):
                 status_code=status.HTTP_200_OK,
             )
         raise HTTPException(
-            status_code=status.HTTP_424_FAILED_DEPENDENCY,
-            detail={"No messages in room": messages},
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"Invalid org_id / room_id": messages},
         )
     except Exception as e:
         raise e
+
+
+@router.get(
+    "/org/{org_id}/rooms/{room_id}/messages/{message_id}",
+    response_model=ResponseModel,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        404: {"detail": "Room does not exist"},
+        424: {"detail": "No messages in room"},
+    },
+)
+async def get_mssg_by_id(org_id: str, room_id: str, message_id: str):
+    """Reads a message in the collection.
+
+    Args:
+        org_id (str): A unique identifier of an organisation
+        request: A pydantic schema that defines the message request parameters
+        room_id: A unique identifier of the room where the message is being sent to.
+        message_id: A unique identifier of the message to be retrieved
+
+    Returns:
+        HTTP_200_OK {message retrieved}:
+        A dict containing data about the message in the collection based on the message schema (response_output).
+            {
+                "_id": "61b8caec78fb01b18fac1410",
+                "created_at": "2021-12-14 16:40:43.302519",
+                "files": [],
+                "message_id": null,
+                "org_id": "619ba4671a5f54782939d384",
+                "reactions": [],
+                "room_id": "619e28c31a5f54782939d59a",
+                "saved_by": [],
+                "sender_id": "61696f5ac4133ddaa309dcfe",
+                "text": "testing messages",
+                "threads": []
+            }
+
+    Raises:
+        HTTP_404_FAILED_DEPENDENCY: Room does not exist
+        HTTP_424_FAILED_DEPENDENCY: "No messages in room"
+    """
+    DB = DataStorage(org_id)
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid Organization id",
+        )
+
+    if room_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid Room id",
+        )
+
+    try:
+        message = await DB.read(MESSAGE_COLLECTION, {"org_id": org_id, "room_id": room_id, "_id": message_id})
+        if message:
+            return JSONResponse(
+                content=ResponseModel.success(
+                    data=message, message="message retrieved"
+                ),
+                status_code=status.HTTP_200_OK,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"Invalid message id": message},
+        )
+    except Exception as e:
+        raise e  
 
 
 @router.put(
@@ -159,7 +228,7 @@ async def read_message(org_id: str, room_id: str):
     },
 )
 async def update_message(
-    org_id: str, room_id: str, message_id: str, request: MessageRequest
+    org_id: str, room_id: str, message_id: str, sender_id: str,  request: MessageRequest
 ):
     """Updates a message in the collection.
 
@@ -197,23 +266,37 @@ async def update_message(
             detail="Invalid Organization id",
         )
 
-    room = await get_room(org_id=org_id, room_id=room_id)
-    if not room:
+    if room_id is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Room does not exist"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid Room id",
         )
 
-    x = await MESSAGE_COLLECTION.find_one({"_id": ObjectId(message_id)})
-    if not x:
+    mssg = await get_mssg(org_id=org_id, room_id=room_id, message_id=message_id)
+    if not mssg:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Message does not exist"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Message not found"
         )
-        
+
+    if mssg["sender_id"] != sender_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to edit this message",
+        )
+    
+    payload = request.dict()
+    payload["org_id"] = org_id
+    payload["room_id"] = room_id
+    payload["sender_id"] = sender_id
+    payload["message_id"] = message_id
+    payload["files"] = []
+    payload["reactions"] = []
+    payload["saved_by"] = []
+    payload["threads"] = []
+
     try:
         message = await DB.update(
-            MESSAGE_COLLECTION,
-            query={"org_id": org_id, "room_id": room_id, "message_id": message_id},
-            data=request.dict(),
+            MESSAGE_COLLECTION, document_id=message_id, data=payload
         )
         if message:
             return JSONResponse(
